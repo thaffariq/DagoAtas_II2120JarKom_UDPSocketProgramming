@@ -4,7 +4,7 @@ import socket
 def handle_client(server_socket, client_address, clients):
     while True:
         try:
-            message, address = server_socket.recvfrom(1024)
+            message, address = server_socket.recvfrom(4096)
             print(f"Message from {address} : {message.decode()}")
             broadcast(server_socket, message, address, clients)
         except:
@@ -26,7 +26,7 @@ def main():
     clients = {}
 
     while True:
-        message, client_address = server_socket.recvfrom(1024)
+        message, client_address = server_socket.recvfrom(4096)
         if client_address not in clients:
             clients[client_address] = True
             print(f"Client {client_address} connected.")

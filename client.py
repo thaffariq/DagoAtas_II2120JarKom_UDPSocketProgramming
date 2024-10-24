@@ -4,7 +4,7 @@ import socket
 def recv_messages(client_socket):
     while True:
         try:
-            message, _ = client_socket.recvfrom(1024)
+            message, _ = client_socket.recvfrom(4096)
             print(f"{message.decode()}")
         except:
             print(f"Disconnected from server.")
