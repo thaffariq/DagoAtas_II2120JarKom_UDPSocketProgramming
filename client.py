@@ -23,7 +23,7 @@ def main():
     while True:
         message = input()
         if(message.lower() == "exit"):
-            print("left from chatroom...")
+            print("You have left the chatroom.")
             break
 
         complete_message = (f"{username} : {message}")
