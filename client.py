@@ -2,6 +2,28 @@ import threading
 import socket
 
 BUFFER_SIZE = 4096
+KEY_RC4 = "my_secure_key"  # Kunci enkripsi yang sama di client dan server
+
+# Fungsi RC4 untuk enkripsi dan dekripsi
+def rc4_encrypt_decrypt(key, data):
+    S = list(range(256))
+    j = 0
+    out = []
+
+    # Key-scheduling algorithm (KSA)
+    for i in range(256):
+        j = (j + S[i] + ord(key[i % len(key)])) % 256
+        S[i], S[j] = S[j], S[i]
+
+    # Pseudo-random generation algorithm (PRGA)
+    i = j = 0
+    for char in data:
+        i = (i + 1) % 256
+        j = (j + S[i]) % 256
+        S[i], S[j] = S[j], S[i]
+        out.append(chr(ord(char) ^ S[(S[i] + S[j]) % 256]))
+
+    return ''.join(out)
 
 # Memeriksa format IP yang valid
 def is_valid_ip(ip):
@@ -19,7 +41,8 @@ def recv_messages(client_socket):
     while True:
         try:
             message, _ = client_socket.recvfrom(BUFFER_SIZE)
-            print(message.decode())
+            decrypted_message = rc4_encrypt_decrypt(KEY_RC4, message.decode())  # Dekripsi pesan
+            print(decrypted_message)
         except:
             print("Terputus dari server.")
             break
@@ -41,25 +64,27 @@ def main():
     # Mengirim username ke server dan menunggu konfirmasi
     while True:
         username = input("Masukkan username: ")
-        client_socket.sendto(f"USERNAME:{username}".encode(), server_address)
+        encrypted_username = rc4_encrypt_decrypt(KEY_RC4, f"USERNAME:{username}")
+        client_socket.sendto(encrypted_username.encode(), server_address)
         
         response, _ = client_socket.recvfrom(BUFFER_SIZE)
-        response_message = response.decode()
-        print(response_message)
+        decrypted_response = rc4_encrypt_decrypt(KEY_RC4, response.decode())
+        print(decrypted_response)
         
-        if response_message == "Username diterima.":
+        if decrypted_response == "Username diterima.":
             break
 
     # Mengirim password ke server dan menunggu konfirmasi koneksi
     while True:
         password = input("Masukkan password: ")
-        client_socket.sendto(f"PASSWORD:{password}".encode(), server_address)
+        encrypted_password = rc4_encrypt_decrypt(KEY_RC4, f"PASSWORD:{password}")
+        client_socket.sendto(encrypted_password.encode(), server_address)
         
         response, _ = client_socket.recvfrom(BUFFER_SIZE)
-        response_message = response.decode()
-        print(response_message)
+        decrypted_response = rc4_encrypt_decrypt(KEY_RC4, response.decode())
+        print(decrypted_response)
 
-        if response_message == "Password diterima. Anda terhubung.":
+        if decrypted_response == "Password diterima. Anda terhubung.":
             break
 
     # Memulai thread untuk mendengarkan pesan yang masuk
@@ -73,7 +98,8 @@ def main():
             break
 
         complete_message = f"{username}: {message}"
-        client_socket.sendto(complete_message.encode(), server_address)
+        encrypted_message = rc4_encrypt_decrypt(KEY_RC4, complete_message)
+        client_socket.sendto(encrypted_message.encode(), server_address)
 
 if __name__ == "__main__":
     main()
