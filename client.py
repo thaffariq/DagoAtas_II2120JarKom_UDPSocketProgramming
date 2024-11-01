@@ -2,20 +2,17 @@ import threading
 import socket
 
 BUFFER_SIZE = 4096
-KEY_RC4 = "my_secure_key"  # Kunci enkripsi yang sama di client dan server
+KEY_RC4 = "my_secure_key"
 
-# Fungsi RC4 untuk enkripsi dan dekripsi
 def rc4_encrypt_decrypt(key, data):
     S = list(range(256))
     j = 0
     out = []
 
-    # Key-scheduling algorithm (KSA)
     for i in range(256):
         j = (j + S[i] + ord(key[i % len(key)])) % 256
         S[i], S[j] = S[j], S[i]
 
-    # Pseudo-random generation algorithm (PRGA)
     i = j = 0
     for char in data:
         i = (i + 1) % 256
@@ -25,30 +22,27 @@ def rc4_encrypt_decrypt(key, data):
 
     return ''.join(out)
 
-# Memeriksa format IP yang valid
+def calculate_checksum(data):
+    return sum(ord(char) for char in data) % 256
+
 def is_valid_ip(ip):
     parts = ip.split(".")
-    if len(parts) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in parts):
-        return True
-    return False
+    return len(parts) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in parts)
 
-# Memeriksa rentang nomor port yang valid
 def is_valid_port(port):
     return port.isdigit() and 1024 <= int(port) <= 65535
 
-# Thread untuk menerima pesan secara terus-menerus
 def recv_messages(client_socket):
     while True:
         try:
             message, _ = client_socket.recvfrom(BUFFER_SIZE)
-            decrypted_message = rc4_encrypt_decrypt(KEY_RC4, message.decode())  # Dekripsi pesan
-            print(decrypted_message)
+            decrypted_message = rc4_encrypt_decrypt(KEY_RC4, message.decode())
+            print(decrypted_message)  # Menampilkan pesan tanpa checksum
         except:
             print("Terputus dari server.")
             break
 
 def main():
-    # Membuat socket UDP untuk klien
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
     while True:
@@ -61,7 +55,6 @@ def main():
         else:
             print("IP atau port tidak valid. Silakan coba lagi.")
 
-    # Mengirim username ke server dan menunggu konfirmasi
     while True:
         username = input("Masukkan username: ")
         encrypted_username = rc4_encrypt_decrypt(KEY_RC4, f"USERNAME:{username}")
@@ -74,7 +67,6 @@ def main():
         if decrypted_response == "Username diterima.":
             break
 
-    # Mengirim password ke server dan menunggu konfirmasi koneksi
     while True:
         password = input("Masukkan password: ")
         encrypted_password = rc4_encrypt_decrypt(KEY_RC4, f"PASSWORD:{password}")
@@ -87,17 +79,16 @@ def main():
         if decrypted_response == "Password diterima. Anda terhubung.":
             break
 
-    # Memulai thread untuk mendengarkan pesan yang masuk
     threading.Thread(target=recv_messages, args=(client_socket,)).start()
 
-    # Mengirim pesan secara terus-menerus hingga pengguna mengetik "exit"
     while True:
         message = input()
         if message.lower() == "exit":
             print("Anda telah meninggalkan ruang obrolan.")
             break
 
-        complete_message = f"{username}: {message}"
+        checksum = calculate_checksum(message)
+        complete_message = f"{message}:{checksum}"
         encrypted_message = rc4_encrypt_decrypt(KEY_RC4, complete_message)
         client_socket.sendto(encrypted_message.encode(), server_address)
 
